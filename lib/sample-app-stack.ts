@@ -10,6 +10,7 @@ import * as logs from "@aws-cdk/aws-logs";
 import * as apig from "@aws-cdk/aws-apigatewayv2";
 import * as servicediscovery from "@aws-cdk/aws-servicediscovery";
 import { Construct } from "constructs";
+import { Secret } from "@aws-cdk/aws-ecs";
 
 export class SampleAppStack extends cdk.Stack  {
   
@@ -25,7 +26,20 @@ export class SampleAppStack extends cdk.Stack  {
       vpcName: 'landingzone-vpc'
     });
 
-    // const vpc = new ec2.Vpc(this, "ProducerVPC");
+    
+    const taskDefinition = new ecs.FargateTaskDefinition(
+      this,
+      "task",
+      {
+        family: "task",
+        compatibility: ecs.Compatibility.EC2_AND_FARGATE,
+        cpu: "256",
+        memoryMiB: "512",
+        networkMode: ecs.NetworkMode.AWS_VPC,
+        // taskRole: taskRole,
+      }
+    );
+     // const vpc = new ec2.Vpc(this, "ProducerVPC");
 
     // ECS Cluster
     // const cluster = new ecs.Cluster.(this, "Fargate Cluster", {
@@ -40,8 +54,8 @@ export class SampleAppStack extends cdk.Stack  {
     const cluster = ecs.Cluster.fromClusterAttributes(this, 'cluster', {
       clusterName: 'pp-backend',
       clusterArn:'arn:aws:ecs:us-east-2:855770807483:cluster/pp-backend',
-      vpc,
-      ServiceSecGrp,
+      vpc: vpc,
+      securityGroups: [ServiceSecGrp] ,
     });
 
 
@@ -153,14 +167,15 @@ export class SampleAppStack extends cdk.Stack  {
 
     //Security Groups
 
+   
 
     // Fargate Services
-    const Service = new ecs.FargateService.(this, "bookService", {
-      cluster: cluster,
-      taskDefinition: bookServiceTaskDefinition,
-      assignPublicIp: false,
-      desiredCount: 2,
-      securityGroup: bookServiceSecGrp,
+    const Service = new ecs.FargateService(this, "pp_backend_service", {
+      cluster,
+      desiredCount: 1,
+      taskDefinition,
+      securityGroups: [ServiceSecGrp],
+      assignPublicIp: true,     
       // cloudMapOptions: {
       //   name: "bookService",
       //   cloudMapNamespace: dnsNamespace,
